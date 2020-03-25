@@ -1,0 +1,16 @@
+.btn {
+        border:none;
+      }
+
+.header{
+        margin-bottom: 40px;
+}
+
+.input-number{
+        min-width: 54px;
+}
+
+.table-striped{
+        margin-top: 30px;
+        margin-bottom: 50px;
+}

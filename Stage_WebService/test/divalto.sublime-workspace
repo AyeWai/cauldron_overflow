@@ -1,0 +1,489 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"do",
+				"donnees"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "index2.php",
+			"settings":
+			{
+				"buffer_size": 1861,
+				"encoding": "UTF-8",
+				"line_ending": "Windows",
+				"name": "<?php"
+			}
+		},
+		{
+			"contents": "<?php\n/*\n* http://hexis-online.it/modules/divaltoInfinityConnec/DivaltoSoap_Hexis_Cli.php?dos=300&ets=MIL&depot=MI&tiers=C0000001&contact=FA\n*\n*/\n\n/* Parmètre Divalto\n * \n\tDossier = hmpseek(ParamEntree,\"dos\",\"32\")\n\tEtablis = hmpseek(ParamEntree,\"ets\",\"32\")\n\tDepot   = hmpseek(ParamEntree,\"depot\",\"32\")\n\tTiers   = hmpseek(ParamEntree,\"tiers\",\"\")\n\tContact = hmpseek(ParamEntree,\"contact\",\"\")\n*/\n\n$dossier=$_GET['dos'];\n$ets=$_GET['ets'];\n$depot=$_GET['depot'];\n$tiers=$_GET['tiers'];\n$contact=$_GET['contact'];\n\necho 'dossier '.$dossier.' - Ets '.$ets.' - depot '.$depot.'- Tiers '.$tiers.' - Contact '.$contact.'<br>';\n\n//header('Content-type: text/xml');\n\necho '<br><h2>Test si ports ip sont ouverts</h2>';\n\n//$MSSQL_HOST='37.97.101.91'; // Armen\n$MSSQL_HOST='localhost'; // Hexis \n$MSSQL_USER='';\n$MSSQL_MDP='';\n$MSSQL_DATBASE='';\n$MSSQL_PREFIX='';\n\n//$ports = array(80, 81);\n$ports = array(80,8080,8081,4443);\n$port_ok=1;\nforeach ($ports as $port)\n{\n    $connection = @fsockopen($MSSQL_HOST, $port, $errno, $errstr, 1);\n\n    if (is_resource($connection))\n    {\n        echo '<h2>' . $MSSQL_HOST . ':' . $port . ' ' . '(' . getservbyport($port, 'tcp') . ') is open.</h2>' . \"\\n\";\n\n        fclose($connection);\n        $port_ok=1;\n    }\n    else\n    {\n        echo '<h2>' . $MSSQL_HOST. ':' . $port . ' is not responding. Erreur:'.$errno.' '.$errstr.'</h2>' . \"\\n\";\n        $port_ok=0;\n    }\n}\n\n// die;\n//Exemple Amazon\n//$client = new SoapClient('http://webservices.amazon.com/AWSECommerceService/AWSECommerceService.wsdl');\n//var_dump($client->__getFunctions());\n\n// Test si url web service est accéssible\n// AS 400 $WSDL=\"http://vpn.hexis.fr:10010/web/services/WEBSRV_2?wsdl\";\n// $WSDL=\"http://37.97.101.91/WebServiceDiva/WebServiceDiva.asmx?wsdl\"; // Armens\n$WSDL=\"http://localhost:4443/WebServiceDiva/WebServiceDiva.asmx?wsdl\"; // Hexis\necho 'Début Test soap Client <br>';\n\n$client_ws = new SoapClient($WSDL, array('trace' => 1, 'exceptions' => 0));\n\nif (is_soap_fault($client_ws)) {\n    echo 'Soap close<br>';\n    trigger_error(\"SOAP Fault: (faultcode: {$result->faultcode}, faultstring: {$result->faultstring})\", E_USER_ERROR);\n    die;\n} else {\n    echo 'Soap open - Liste des fonctions<br>';\n    var_dump($client_ws->__getFunctions());\n}\n\necho '<br>Fin Test de base connexion soap <br>';\n//die;\n//header('Content-type: text/xml');\necho '<br>Début Test connexion ws_client_it <br>';\n\n$param_ws=\"<dos>\".$dos.\"<ets>\".$ets.\"<depot>\".$depot.\"<tiers>\".$tiers.\"<contact>\".$contact;\n$tableau_ws = array (\"action\"=>\"<action>WS_CLI_HEXIS_IN01\", \"param\"=>\"\".$param_ws.\"\");\n$cptws=0;\n$code_retour=0;\n$time_start = microtime(true);\n\nwhile ($cptws<1) \n\t{\n\t$cptws++;\n\techo 'Test soap ws '.$tableau_ws['action'].'<br>';\n\ttry\n\t\t{\n\t\t$result = $client_ws->WebServiceDiva($tableau_ws);\n\t\t}\n\t\tcatch (SoapFault $e)\n\t\t{\n\t\techo '<br>Erreur Soap Divalto<br>';\n\t\tprint_r($e);\n\t\treturn;\n\t\t}\n\t\t\n\techo '<br>Ok Soap Divalto - Retour<br>';\n\tprint_r($result);\n\tdie;\n\tprint \"<br><br>Requete Web service client :</br>\\n\".$client_ws->__getLastRequest() .\"\\n\";\n\t//die;\n\t$xml = $client_ws->__getLastResponse();\n\tif(empty($xml)) \n\t\t{\n\t\techo \"<br><br>Pas de réponse web service<br>\";\n\t\treturn;\n\t\t}\n\n\techo \"<br>Réponse web service<br>\";\n\t\t\n\t$tableau_q= explode(\";\", $divalto_listproduct);\n\t$tableau_r = explode(\";\", $xml);\n\tprint_r($tableau_q);\n\techo \"<br><br>Code Retour: \".$tableau_r[0].\"<br><br>\";\n\tprint_r($tableau_r);\n\n\t$retour_deb = \"&lt;WebServiceDivaResult&gt;\";\n\t$retour_fin = \"&lt;/WebServiceDivaResult&gt;\";\n\t$reponse_deb = \"&lt;retour&gt;\";\n\t$reponse_fin = \"&lt;/retour&gt;\";\n\n\t$pos_d = stripos($xml, $retour_deb) + 28;\n\t$pos_f = stripos($xml, $retour_fin) ;\n\t$code_retour= substr($xml, $pos_d , $pos_f-$pos_d);\n\t// echo \"code retour corect si 0\".$code_retour.\"<br>\";\n\tif ($code_retour=='0') \n\t\t{\n\t\tbreak;\n\t\t}\n\t// boucle attendre en 100 000 et 500 000 microsecondes => 0,1 secondes => 0,5 secondes \n\t$pause=rand(100000,500000);\n\tusleep($pause);\n\t}\n\n\n?>\n",
+			"file": "/C/Users/c.simon/AppData/Local/Microsoft/Windows/INetCache/Content.Outlook/WIFYJRHO/phpcli.php",
+			"file_size": 4083,
+			"file_write_time": 132158154058346085,
+			"settings":
+			{
+				"buffer_size": 3934,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "commande.php",
+			"settings":
+			{
+				"buffer_size": 2672,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "index.php",
+			"settings":
+			{
+				"buffer_size": 557,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "login.php",
+			"settings":
+			{
+				"buffer_size": 691,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/C/wamp64/www/minichat_post.php",
+			"settings":
+			{
+				"buffer_size": 931,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/C/wamp64/www/minichat.php.php",
+			"settings":
+			{
+				"buffer_size": 1025,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "article2.php",
+			"settings":
+			{
+				"buffer_size": 1543,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 157.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/C/wamp64/www/Stage_WebService/test/article.php",
+		"/C/wamp64/www/Stage_WebService/test/index.php"
+	],
+	"find":
+	{
+		"height": 0.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "index2.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1861,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1007,
+								1007
+							]
+						],
+						"settings":
+						{
+							"auto_name": "<?php",
+							"syntax": "Packages/PHP/PHP.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 444.8,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "/C/Users/c.simon/AppData/Local/Microsoft/Windows/INetCache/Content.Outlook/WIFYJRHO/phpcli.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3934,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "commande.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2672,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2672,
+								2672
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1262.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "index.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 557,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "login.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 691,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "/C/wamp64/www/minichat_post.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 931,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								471,
+								471
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 324.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "/C/wamp64/www/minichat.php.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1025,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1025,
+								1025
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 648.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "article2.php",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1543,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								741,
+								741
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/PHP/PHP.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 540.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "divalto.sublime-project",
+	"replace":
+	{
+		"height": 0.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"last_automatic_layout":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		]
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 150.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

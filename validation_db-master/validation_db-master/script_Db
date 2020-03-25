@@ -1,0 +1,16 @@
+create table products (id int,  name varchar(20), description varchar(200), create_date timestamp, price float, img varchar(200));
+
+create table products (id int,  name varchar(30), capacity int);
+
+
+
+
+
+
+insert into products(id, name, description, create_date, price, img) values(1, "Once d’Or", "La monnaie des dieux. Apprécié depuis l'aube de l'humanité, il aura toujours de la valeur après le déclin de celle-ci" , CURRENT_TIMESTAMP(), 1321.79, "https://cdn.pixabay.com/photo/2016/10/16/10/11/bullion-1744773_960_720.jpg");
+
+insert into users (id,  name, capacity) values(1, “Administrateur”, 7);
+
+
+select * from products;
+select * users;
